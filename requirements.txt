@@ -1,0 +1,14 @@
+pyTelegramBotAPI
+aiohttp
+motor
+beanie
+pydantic>=2.0,<3.0
+pydantic-settings
+httpx
+python-dotenv
+# Only needed if you connect via mongodb+srv://
+dnspython
+usso<0.28
+ufiles
+logfire
+tenacity
