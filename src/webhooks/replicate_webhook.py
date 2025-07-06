@@ -1,15 +1,18 @@
-from fastapi import FastAPI, Request, Query
+# src/webhooks/replicate_webhook.py
+
+from fastapi import FastAPI, Request
 from datetime import datetime
 from src.models.generation import Generation
 from src.bot import bot
 
 app = FastAPI()
 
+# UPDATED: Removed chat_id from the endpoint signature
 @app.post("/replicate")
-async def replicate_callback(request: Request, chat_id: int = Query(...)):
+async def replicate_callback(request: Request):
     """
-    Webhook endpoint for Replicate to notify when an image generation job completes.
-    Expects a `chat_id` query parameter to know which Telegram user to message.
+    Webhook endpoint for Replicate to notify when a job completes.
+    It finds the user to message via the replicate_id in the payload.
     """
     payload = await request.json()
     rep_id = payload.get("id")
@@ -22,10 +25,13 @@ async def replicate_callback(request: Request, chat_id: int = Query(...)):
     if not gen:
         return {"error": "generation record not found"}
 
+    # ADDED: Get chat_id from the database record
+    chat_id = gen.chat_id
+
     # Update document fields
     gen.status = status
     if status == "succeeded" and output:
-        gen.result_url = output[0]
+        gen.result_url = output[0]  # This now works because the field exists
         gen.completed_at = datetime.utcnow()
     elif status == "failed":
         gen.error = error or "unknown error"

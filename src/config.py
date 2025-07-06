@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     REPLICATE_CALLBACK_URL: str = Field(..., env="REPLICATE_CALLBACK_URL")
     ZARINPAL_MERCHANT_ID: str = Field(..., env="ZARINPAL_MERCHANT_ID")
     ZARINPAL_CALLBACK_URL: str = Field(..., env="ZARINPAL_CALLBACK_URL")
-    ZARINPAL_REQUEST_URL: str = Field(..., env="ZARINPAL_REQUEST_URL")
-    ZARINPAL_VERIFY_URL: str = Field(..., env="ZARINPAL_VERIFY_URL")
+    ZARINPAL_REQUEST_URL: str = Field(..., env="SAND_REQUEST_URL")
+    ZARINPAL_VERIFY_URL: str = Field(..., env="SAND_VERIFY_URL")
     ZARINPAL_PAYMENT_BASE: str = Field(..., env="ZARINPAL_PAYMENT_BASE")
     PIXY_API_KEY: str = Field(..., env="PIXY_API_KEY")
     LOGFIRE_TOKEN: str = Field(..., env="LOGFIRE_TOKEN")
@@ -21,5 +21,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = 'ignore'  # <-- Add this line to ignore extra fields
 
 settings = Settings()

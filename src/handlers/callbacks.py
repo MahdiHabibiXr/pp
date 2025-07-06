@@ -15,11 +15,11 @@ async def process_purchase(call: CallbackQuery):
     try:
         pkg_idx = int(call.data.split("_", 1)[1])
     except (ValueError, IndexError):
-        return await bot.send_message(chat_id, "انتخاب نامعتبر است.")
+        return await bot.send_message(chat_id, "Invalid selection.")
 
     cfg = await AppConfig.find_one(AppConfig.type == "credit_packages")
     if not cfg or pkg_idx >= len(cfg.credit_packages):
-        return await bot.send_message(chat_id, "بسته مورد نظر موجود نیست.")
+        return await bot.send_message(chat_id, "The selected package is not available.")
 
     label, price, coins, _ = cfg.credit_packages[pkg_idx]
     client = ZarinpalClient()
@@ -31,19 +31,19 @@ async def process_purchase(call: CallbackQuery):
     )
 
     if not result.get("success"):
-        err = result.get("error", "خطای نامشخص")
+        err = result.get("error", "Unknown error")
         status = result.get("status")
         if status is not None:
             err = f"{err} (code={status})"
-        return await bot.send_message(chat_id, f"❌ خطا هنگام ایجاد پرداخت: {err}")
+        return await bot.send_message(chat_id, f"❌ Error creating payment: {err}")
 
-    # موفقیت
+    # Success
     payment_link = result["payment_link"]
     authority    = result["authority"]
     payment_uid  = result["payment_uid"]
 
     payment = Payment(
-        uid=payment_uid,
+        uid=UUID(payment_uid), # Ensure UID is UUID object for the DB
         chat_id=chat_id,
         amount=price,
         status="initiated",
@@ -61,7 +61,7 @@ async def process_purchase(call: CallbackQuery):
 
     await bot.send_message(
         chat_id,
-        f"برای خرید **{coins}** اعتبار به ارزش **{price:,}** ریال، لطفاً پرداخت را تکمیل کنید:",
+        f"To purchase **{coins}** credits for **{price:,}** Rial, please complete the payment:",
         parse_mode="Markdown",
         reply_markup=markup
     )
@@ -72,19 +72,20 @@ async def verify_payment(call: CallbackQuery):
     try:
         pay_uid = UUID(call.data.split("_", 1)[1])
     except:
-        return await bot.send_message(chat_id, "شناسه پرداخت نامعتبر است.")
+        return await bot.send_message(chat_id, "Invalid payment ID.")
 
     pay = await Payment.find_one(Payment.uid == pay_uid)
     if not pay:
-        return await bot.send_message(chat_id, "رکورد پرداخت پیدا نشد.")
+        return await bot.send_message(chat_id, "Payment record not found.")
 
     client     = ZarinpalClient()
     verify_res = await client.verify_payment(pay.authority, pay.amount)
     status     = verify_res.get("status")
 
     if verify_res.get("success") and status == 100:
-        # پرداخت جدیداً تأیید شد → افزودن اعتبار
+        # Payment newly verified -> add credits
         pay.status       = "completed"
+        pay.transaction_id = verify_res.get("ref_id")
         pay.completed_at = datetime.utcnow()
         await pay.save()
 
@@ -97,22 +98,42 @@ async def verify_payment(call: CallbackQuery):
 
         return await bot.send_message(
             chat_id,
-            f"🎉 پرداخت تایید شد! **{pay.package_coins}** اعتبار اضافه شد.",
+            f"🎉 Payment verified! **{pay.package_coins}** credits have been added.",
             parse_mode="Markdown"
         )
 
     if verify_res.get("success") and status == 101:
-        # پرداخت قبلاً تأیید شده
+        # Payment already verified
         return await bot.send_message(
             chat_id,
-            "ℹ️ این پرداخت قبلاً تأیید شده است.",
+            "ℹ️ This payment has already been verified.",
             parse_mode="Markdown"
         )
+    
+    # Handle the specific "session not active" error
+    if status == -51:
+        error_message = (
+            "❌ Your payment has not been confirmed by the bank.\n\n"
+            "If a deduction was made from your account, it will be returned within 72 hours.\n\n"
+            "If you are sure about your payment, please try again in a few minutes or contact support."
+        )
+        markup = InlineKeyboardMarkup()
+        # Add the "Complete Payment" button with the URL from the database
+        markup.add(InlineKeyboardButton("🛒 Complete Payment", url=pay.payment_link))
+        # Add the "Retry Verification" button
+        markup.add(InlineKeyboardButton("🔄 Retry Verification", callback_data=f"verify_{pay.uid}"))
+        
+        await bot.send_message(
+            chat_id,
+            error_message,
+            reply_markup=markup
+        )
+        return
 
-    # خطای دیگر
-    err = verify_res.get("error", "خطای نامشخص")
+    # Handle other errors
+    err = verify_res.get("error", "Unknown error")
     if status is not None:
         err = f"{err} (code={status})"
     pay.status = "failed"
     await pay.save()
-    return await bot.send_message(chat_id, f"❌ پرداخت تأیید نشد: {err}")
+    return await bot.send_message(chat_id, f"❌ Payment verification failed: {err}")

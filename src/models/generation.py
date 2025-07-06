@@ -1,3 +1,5 @@
+# src/models/generation.py
+
 from beanie import Document
 from pydantic import Field, HttpUrl
 from datetime import datetime
@@ -16,10 +18,11 @@ class Generation(Document):
     model_name: str
     replicate_id: Optional[str] = None
     status: str             # pending, processing, completed, failed
+    result_url: Optional[HttpUrl] = None  # <-- ADDED: To store the final image URL
     error: Optional[str] = None
     cost: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)  # ← new field
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
 
     class Settings:

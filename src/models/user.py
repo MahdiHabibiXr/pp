@@ -1,3 +1,5 @@
+# src/models/user.py
+
 from beanie import Document
 from pydantic import Field
 from datetime import datetime
@@ -14,7 +16,7 @@ class User(Document):
     first_name: Optional[str]
     last_name: Optional[str]
     phone: Optional[str] = ""
-    credits: int = 0
+    credits: int = 10  # <-- UPDATED: Changed default credits from 0 to 10
     paid: bool = False
     refs: List[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)

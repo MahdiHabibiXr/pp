@@ -1,16 +1,20 @@
+# src/services/zarinpal_client.py
+
 import httpx
 import logfire
+import json
 from uuid import uuid4
 
 from src.config import settings
 
-# یک‌بار لاگ‌فای را پیکربندی می‌کنیم
+# Configure Logfire once
 logfire.configure(token=settings.LOGFIRE_TOKEN)
+
 
 class ZarinpalClient:
     """
-    Client for creating and verifying payments via Zarinpal,
-    با پشتیبانی از پاسخ‌های آرایه‌ای و تشخیص کدهای 100/101 در Verify.
+    Client for creating and verifying payments via Zarinpal, with robust
+    error handling for timeouts, HTTP errors, and nested error messages.
     """
     def __init__(self):
         self.merchant_id  = settings.ZARINPAL_MERCHANT_ID
@@ -18,6 +22,8 @@ class ZarinpalClient:
         self.request_url  = settings.ZARINPAL_REQUEST_URL
         self.verify_url   = settings.ZARINPAL_VERIFY_URL
         self.payment_base = settings.ZARINPAL_PAYMENT_BASE
+        # Increased timeout to 20 seconds
+        self.timeout = 20.0
 
     def _headers(self):
         return {"Content-Type": "application/json", "Accept": "application/json"}
@@ -31,10 +37,6 @@ class ZarinpalClient:
     ) -> dict:
         """
         Initiates a Zarinpal payment.
-        Returns:
-          - success: bool
-          - payment_link, authority, payment_uid  (on success)
-          - error, status                       (on failure)
         """
         uid = str(uuid4())
         payload = {
@@ -42,105 +44,119 @@ class ZarinpalClient:
             "amount": amount,
             "callback_url": self.callback_url,
             "description": description,
-            "metadata": {"chat_id": chat_id, "package_coins": package_coins},
+            "metadata": {
+                "mobile": settings.ZARINPAL_MERCHANT_MOBILE,
+                "email": settings.ZARINPAL_MERCHANT_EMAIL,
+            },
         }
         logfire.info(f"🔄 Zarinpal create_payment payload: {payload}")
 
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
                 res = await client.post(self.request_url, json=payload, headers=self._headers())
             res.raise_for_status()
             resp_json = res.json()
+
         except httpx.TimeoutException:
-            msg = "Timeout while connecting to Zarinpal"
+            msg = "The payment request timed out. Please try again in a moment."
+            logfire.error(f"❌ Zarinpal create timeout: {msg}")
+            return {"success": False, "error": msg, "status": "TIMEOUT"}
+        except httpx.HTTPStatusError as e:
+            msg = f"HTTP error {e.response.status_code}: {e.response.text}"
+            logfire.error(f"❌ {msg}")
+            return {"success": False, "error": e.response.text, "status": e.response.status_code}
+        except Exception as e:
+            msg = f"An unexpected error occurred: {e}"
             logfire.error(f"❌ {msg}")
             return {"success": False, "error": msg}
-        except httpx.HTTPError as e:
-            msg = f"HTTP error: {e}"
-            logfire.error(f"❌ {msg}")
-            return {"success": False, "error": msg}
 
-        logfire.info(f"✅ Zarinpal raw response: {resp_json}")
+        logfire.info(f"✅ Zarinpal create raw response: {resp_json}")
+        errors = resp_json.get("errors")
+        data = resp_json.get("data")
 
-        # اگر پاسخ لیست است، عنصر اول را بگیر
-        if isinstance(resp_json, list) and resp_json:
-            resp_json = resp_json[0]
+        if errors and errors != []:
+            err_msg = errors.get("message", "Unknown error")
+            err_code = errors.get("code")
+            return {"success": False, "error": err_msg, "status": err_code}
 
-        # مسیر موفقیت: data.code == 100
-        data = resp_json.get("data", {})
-        code = data.get("code")
-        if code == 100:
-            authority    = data["authority"]
+        if data and data.get("code") == 100:
+            authority = data["authority"]
             payment_link = f"{self.payment_base}{authority}"
-            return {
-                "success": True,
-                "payment_link": payment_link,
-                "payment_uid": uid,
-                "authority": authority
-            }
+            return {"success": True, "payment_link": payment_link, "payment_uid": uid, "authority": authority}
 
-        # مسیر خطا: اگر data وجود دارد، از آن استفاده کن
-        if data:
-            err_msg = data.get("message") or f"خطای نامشخص (code={code})"
-            logfire.error(f"❌ Zarinpal create error in data: {err_msg} (code={code})")
-            return {"success": False, "error": err_msg, "status": code}
-
-        # مسیر خطا کلیدهای سطح‌بالا
-        status = resp_json.get("status")
-        err_msg = resp_json.get("message") or resp_json.get("error") or f"Error (status={status})"
-        logfire.error(f"❌ Zarinpal create top-level error: {err_msg} (status={status})")
-        return {"success": False, "error": err_msg, "status": status}
+        err_msg = (data.get("message") if data else "Invalid response")
+        err_code = (data.get("code") if data else None)
+        return {"success": False, "error": err_msg, "status": err_code}
 
     async def verify_payment(self, authority: str, amount: int) -> dict:
         """
-        Verifies a Zarinpal payment.
-        On success:
-          - code==100: پرداخت جدیداً تأیید شد
-          - code==101: پرداخت قبلاً تأیید شده
-        Returns dict with:
-          success: bool
-          ref_id: int  (when code in [100,101])
-          status: int  (the code)
-          error: str   (on failure)
+        Verifies a Zarinpal payment, with robust error handling for the specific n8n workflow response.
         """
         payload = {"merchant_id": self.merchant_id, "amount": amount, "authority": authority}
         logfire.info(f"🔄 Zarinpal verify_payment payload: {payload}")
 
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
                 res = await client.post(self.verify_url, json=payload, headers=self._headers())
             res.raise_for_status()
             resp_json = res.json()
+
         except httpx.TimeoutException:
-            msg = "Timeout while verifying with Zarinpal"
-            logfire.error(f"❌ {msg}")
-            return {"success": False, "error": msg}
-        except httpx.HTTPError as e:
-            msg = f"HTTP error: {e}"
-            logfire.error(f"❌ {msg}")
-            return {"success": False, "error": msg}
+            msg = "The verification request timed out. The server is taking too long to respond. Please try again in a moment."
+            logfire.error(f"❌ Zarinpal verify timeout: {msg}")
+            return {"success": False, "error": msg, "status": "TIMEOUT"}
+        
+        except httpx.HTTPStatusError as e:
+            logfire.error(f"❌ Zarinpal verify HTTP error ({e.response.status_code})... attempting to parse nested error.")
+            
+            try:
+                # Step 1: Parse the outer JSON object from the n8n error response.
+                n8n_error_data = e.response.json()
+                
+                # Step 2: Extract the 'message' string, which itself contains JSON.
+                message_with_nested_json = n8n_error_data.get("error", {}).get("message", e.response.text)
+
+                # Step 3: Find the start and end of the nested JSON within the string.
+                json_start_index = message_with_nested_json.find('{')
+                json_end_index = message_with_nested_json.rfind('}')
+                
+                if json_start_index == -1:
+                    raise ValueError("Nested JSON start not found")
+
+                # Step 4: Extract the raw, escaped JSON string.
+                raw_json_part = message_with_nested_json[json_start_index : json_end_index + 1]
+                
+                # Step 5: Unescape characters like \\" to " and parse the clean string.
+                cleaned_json_string = raw_json_part.replace('\\"', '"')
+                final_data = json.loads(cleaned_json_string)
+                
+                # Step 6: Extract the real error message and code from the innermost 'errors' object.
+                final_errors = final_data.get("errors", {})
+                message = final_errors.get("message", "Could not parse final Zarinpal error.")
+                code = final_errors.get("code")
+                
+                logfire.info(f"✅ Successfully parsed nested Zarinpal error. Code: {code}, Message: {message}")
+                return {"success": False, "error": message, "status": code}
+
+            except Exception as parse_error:
+                # Fallback if the robust parsing fails for any reason
+                logfire.error(f"💥 Failed to parse nested error, falling back to raw text. Parse Error: {parse_error}")
+                return {"success": False, "error": e.response.text, "status": e.response.status_code}
+
+        except Exception as e:
+            logfire.exception(f"💥 Unexpected error during Zarinpal verification: {e}")
+            return {"success": False, "error": str(e)}
 
         logfire.info(f"✅ Zarinpal verify raw response: {resp_json}")
+        errors = resp_json.get("errors")
+        data = resp_json.get("data")
 
-        # اگر پاسخ لیست است، عنصر اول را بگیر
-        if isinstance(resp_json, list) and resp_json:
-            resp_json = resp_json[0]
+        if errors and errors != []:
+            return {"success": False, "error": errors.get("message"), "status": errors.get("code")}
 
-        data = resp_json.get("data", {})
-        code = data.get("code")
+        if data and data.get("code") in (100, 101):
+            return {"success": True, "ref_id": data.get("ref_id"), "status": data.get("code")}
 
-        if code in (100, 101):
-            ref_id = data.get("ref_id")
-            return {"success": True, "ref_id": ref_id, "status": code}
-
-        # خطا در data
-        if data:
-            err_msg = data.get("message") or f"Verification failed (code={code})"
-            logfire.error(f"❌ Zarinpal verify error in data: {err_msg} (code={code})")
-            return {"success": False, "error": err_msg, "status": code}
-
-        # خطا کلیدهای سطح‌بالا
-        status = resp_json.get("status")
-        err_msg = resp_json.get("message") or resp_json.get("error") or f"Verification error (status={status})"
-        logfire.error(f"❌ Zarinpal verify top-level error: {err_msg} (status={status})")
-        return {"success": False, "error": err_msg, "status": status}
+        err_msg = (data.get("message") if data else "Invalid response structure")
+        err_code = (data.get("code") if data else None)
+        return {"success": False, "error": err_msg, "status": err_code}
