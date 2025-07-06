@@ -46,8 +46,7 @@ class ReplicateClient:
 
         payload = {
             "input": payload_input,
-            # UPDATED: Removed chat_id from webhook URL for better security
-            "webhook": f"{settings.REPLICATE_CALLBACK_URL}"
+            "webhook": f"{settings.REPLICATE_CALLBACK_URL}?chat_id={chat_id}",
         }
 
         logfire.info(f"🚀 Replicate payload: {payload}")

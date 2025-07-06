@@ -9,7 +9,7 @@ from src.texts import messages
 app = FastAPI()
 
 @app.post("/replicate")
-async def replicate_callback(Request: Request):
+async def replicate_callback(request: Request):
     """
     Webhook endpoint for Replicate to notify when a job completes.
     It finds the user to message via the replicate_id in the payload.
@@ -22,23 +22,22 @@ async def replicate_callback(Request: Request):
 
     gen = await Generation.find_one(Generation.replicate_id == rep_id)
     if not gen:
-        return {"error": messages.GENERATION_NOT_FOUND}
+        return {"error": messages.WEBHOOK_GENERATION_NOT_FOUND}
 
     chat_id = gen.chat_id
 
-    gen.status = status
     if status == "succeeded" and output:
+        gen.status = "done" # <-- Use new status
         gen.result_url = output[0]
         gen.completed_at = datetime.utcnow()
-    elif status == "failed":
-        gen.error = error or "unknown error"
-        gen.completed_at = datetime.utcnow()
-    gen.updated_at = datetime.utcnow()
-    await gen.save()
-
-    if status == "succeeded" and output:
         await bot.send_photo(chat_id, gen.result_url)
     elif status == "failed":
-        await bot.send_message(chat_id, messages.GENERATION_FAILED.format(error=gen.error))
+        gen.status = "error" # <-- Use new status
+        gen.error = error or "unknown error"
+        gen.completed_at = datetime.utcnow()
+        await bot.send_message(chat_id, messages.GENERATION_FAILED_WEBHOOK.format(error=gen.error))
+    
+    gen.updated_at = datetime.utcnow()
+    await gen.save()
 
     return {"ok": True}

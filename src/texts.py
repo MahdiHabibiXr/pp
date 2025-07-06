@@ -1,62 +1,72 @@
 # src/texts.py
 
 class MessageTexts:
-    # --- General ---
-    INVALID_CHOICE = "انتخاب نامعتبر است."
-    PACKAGE_NOT_FOUND = "بسته مورد نظر موجود نیست."
+    # --- پیام‌های عمومی ---
+    GENERIC_ERROR = "متاسفانه خطایی رخ داده است. لطفا دوباره تلاش کنید."
+    INVALID_CHOICE = "گزینه انتخاب شده معتبر نیست."
+    PACKAGE_NOT_FOUND = "بسته انتخابی شما یافت نشد."
 
-    # --- /start command ---
+    # --- دستور /start ---
     WELCOME = (
-        "Welcome to the Product Placement Bot!\n"
-        "Use /generate to create an image.\n"
-        "Use /balance to check your credits.\n"
-        "Use /buy to purchase credit packages."
+        "به ربات هوشمند «محصولتو بذار» خوش آمدید!\n\n"
+        "با این ربات می‌توانید محصولات خود را در تصاویر جدید و خلاقانه قرار دهید.\n\n"
+        "📸 برای شروع، لطفا یک عکس از محصول خود را برای من ارسال کنید."
     )
 
-    # --- /balance command ---
-    BALANCE_CHECK = "Your balance: {credits} credits."
+    # --- دستور /balance ---
+    BALANCE_CHECK = "موجودی اعتبار شما: {credits} سکه"
 
-    # --- /buy command ---
-    NO_PACKAGES = "بسته‌ای برای نمایش وجود ندارد."
+    # --- دستور /buy ---
+    NO_PACKAGES = "در حال حاضر بسته‌ای برای خرید اعتبار وجود ندارد."
 
-    # --- Photo handling (messages.py) ---
-    CAPTION_MISSING = "⚠️ Please send the image with a descriptive caption."
-    INSUFFICIENT_CREDITS = "⚠️ You do not have enough credits. Your balance is {credits_balance} credits.\nUse /buy to purchase more."
-    PHOTO_DOWNLOAD_ERROR = "❌ Error downloading the image. Please try again."
-    PHOTO_UPLOAD_ERROR = "❌ Error uploading the image. Please try again later."
-    PROMPT_SERVICE_ERROR = "❌ Error contacting the prompt generation service. Please try again later."
-    PROMPT_GENERATION_ERROR = "❌ Error generating the image description. Please try again later."
-    IMAGE_GENERATION_SUBMISSION_ERROR = "❌ Error submitting the request to the image generation service. Your credits have been refunded."
-    REQUEST_RECEIVED = "✅ Your request has been received (ID: `{gen_uid}`). It is now being processed. You will receive the image as soon as it's ready."
+    # --- جریان اصلی ربات و مکالمات ---
+    SELECT_SERVICE = "تصویر شما دریافت شد. لطفا سرویس مورد نظر را انتخاب کنید:"
+    PROVIDE_DESCRIPTION = "بسیار خب! لطفا توضیحاتی که برای تولید تصویر نیاز دارید را به طور کامل ارسال کنید.\n\nمثال: در یک ساحل آفتابی در کنار دریا قرار بگیرد."
+    CONFIRMATION_PROMPT = "لطفا درخواست خود را بازبینی و تایید کنید:\n\n**توضیحات شما:**\n{description}"
+    REQUEST_ACCEPTED = "✅ درخواست شما تایید و به صف پردازش اضافه شد."
+    REQUEST_CANCELLED = "❌ درخواست لغو شد. برای شروع مجدد، لطفا تصویر جدیدی ارسال کنید."
+    EDIT_PROMPT = "✏️ لطفا توضیحات جدید خود را وارد کنید."
+    GENERATION_NOT_FOUND_FOR_USER = "متاسفانه درخواست فعالی برای شما پیدا نشد. لطفا با ارسال یک عکس جدید، فرآیند را شروع کنید."
+    INSUFFICIENT_CREDITS = "⚠️ اعتبار شما کافی نیست.\nموجودی فعلی: {credits_balance} سکه\nبرای خرید اعتبار از دستور /buy استفاده کنید."
+    REQUEST_IN_QUEUE = "✅ درخواست شما با موفقیت ثبت شد (شناسه: `{gen_uid}`). به محض آماده شدن، تصویر نهایی برای شما ارسال خواهد شد."
 
-    # --- Payment (callbacks.py) ---
-    PAYMENT_CREATION_ERROR = "❌ Error creating payment: {err}"
-    PURCHASE_PROMPT = "To purchase **{coins}** credits for **{price:,}** Rial, please complete the payment:"
-    INVALID_PAYMENT_ID = "Invalid payment ID."
-    PAYMENT_RECORD_NOT_FOUND = "Payment record not found."
-    PAYMENT_VERIFIED_SUCCESS = "🎉 Payment verified! **{pay.package_coins}** credits have been added."
-    PAYMENT_ALREADY_VERIFIED = "ℹ️ This payment has already been verified."
-    PAYMENT_NOT_CONFIRMED = (
-        "❌ Your payment has not been confirmed by the bank.\n\n"
-        "If a deduction was made from your account, it will be returned within 72 hours.\n\n"
-        "If you are sure about your payment, please try again in a few minutes or contact support."
+    # --- خطاهای مربوط به پردازش تصویر ---
+    PHOTO_DOWNLOAD_ERROR = "❌ در دانلود تصویر خطایی رخ داد. لطفا دوباره تلاش کنید."
+    PHOTO_UPLOAD_ERROR = "❌ در آپلود تصویر خطایی رخ داد. لطفا چند دقیقه دیگر دوباره تلاش کنید."
+    PROMPT_SERVICE_ERROR = "❌ در ارتباط با سرویس پردازش متن خطایی رخ داد. لطفا بعدا تلاش کنید."
+    PROMPT_GENERATION_ERROR = "❌ در تولید توضیحات تصویر خطایی رخ داد. لطفا بعدا تلاش کنید."
+    IMAGE_GENERATION_SUBMISSION_ERROR = "❌ در ثبت درخواست شما خطایی رخ داد. اعتبار شما بازگردانده شد. لطفا دوباره تلاش کنید."
+
+    # --- پیام‌های مربوط به پرداخت ---
+    PAYMENT_CREATION_ERROR = "❌ هنگام ایجاد لینک پرداخت خطایی رخ داد: {err}"
+    PURCHASE_PROMPT = "برای خرید **{coins}** سکه اعتبار به مبلغ **{price:,}** ریال، لطفا پرداخت را تکمیل کنید:"
+    INVALID_PAYMENT_ID = "شناسه پرداخت نامعتبر است."
+    PAYMENT_RECORD_NOT_FOUND = "رکورد پرداخت پیدا نشد."
+    PAYMENT_VERIFIED_SUCCESS = "🎉 پرداخت شما با موفقیت تایید شد! **{package_coins}** سکه به اعتبار شما اضافه گردید."
+    PAYMENT_ALREADY_VERIFIED = "ℹ️ این پرداخت قبلا تایید و اعتبار آن به حساب شما اضافه شده است."
+    PAYMENT_VERIFICATION_FAILED = "❌ پرداخت تایید نشد: {err}"
+    PAYMENT_VERIFICATION_GENERIC_ERROR = (
+        "❌ پرداخت شما از طرف بانک تایید نشده است.\n\n"
+        "در صورتیکه مبلغی از حساب شما کسر شده باشد، ظرف ۷۲ ساعت آینده به حساب شما بازگردانده خواهد شد.\n\n"
+        "اگر از پرداخت خود مطمئن هستید، چند دقیقه دیگر دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.\n\n"
+        "کد پیگیری: {authority}\n"
+        "آیدی کاربر: {chat_id}"
     )
-    PAYMENT_VERIFICATION_FAILED = "❌ Payment verification failed: {err}"
-
-    # --- Webhooks ---
-    GENERATION_NOT_FOUND = "generation record not found"
-    GENERATION_FAILED = "⚠️ Generation failed: {error}"
-
-    # --- Zarinpal Client ---
-    PAYMENT_REQUEST_TIMEOUT = "The payment request timed out. Please try again in a moment."
-    VERIFICATION_REQUEST_TIMEOUT = "The verification request timed out. The server is taking too long to respond. Please try again in a moment."
     COULD_NOT_PARSE_ZARINPAL_ERROR = "Could not parse final Zarinpal error."
-
-
+    PROCESSING_REQUEST = "⏳ درخواست شما در حال پردازش است، لطفا کمی صبر کنید..."
 class ButtonLabels:
-    COMPLETE_PAYMENT = "🛒 Complete Payment"
-    I_HAVE_PAID = "✅ I have paid"
-    RETRY_VERIFICATION = "🔄 Retry Verification"
+    # --- دکمه‌های پرداخت ---
+    COMPLETE_PAYMENT = "🛒 تکمیل پرداخت"
+    I_HAVE_PAID = "✅ پرداخت را انجام دادم"
+    RETRY_VERIFICATION = "🔄 تلاش مجدد برای تایید"
+
+    # --- دکمه‌های سرویس‌ها ---
+    PRODUCT_PHOTOSHOOT = "📸 عکاسی از محصول"
+    
+    # --- دکمه‌های تایید درخواست ---
+    ACCEPT = "✅ تایید و ارسال"
+    EDIT = "✏️ ویرایش توضیحات"
+    CANCEL_NEW_REQUEST = "❌ لغو و شروع مجدد"
 
 
 # Instantiate for easy access
