@@ -6,6 +6,7 @@ import json
 from uuid import uuid4
 
 from src.config import settings
+from src.texts import messages
 
 # Configure Logfire once
 logfire.configure(token=settings.LOGFIRE_TOKEN)
@@ -58,7 +59,7 @@ class ZarinpalClient:
             resp_json = res.json()
 
         except httpx.TimeoutException:
-            msg = "The payment request timed out. Please try again in a moment."
+            msg = messages.PAYMENT_REQUEST_TIMEOUT
             logfire.error(f"❌ Zarinpal create timeout: {msg}")
             return {"success": False, "error": msg, "status": "TIMEOUT"}
         except httpx.HTTPStatusError as e:
@@ -102,7 +103,7 @@ class ZarinpalClient:
             resp_json = res.json()
 
         except httpx.TimeoutException:
-            msg = "The verification request timed out. The server is taking too long to respond. Please try again in a moment."
+            msg = messages.VERIFICATION_REQUEST_TIMEOUT
             logfire.error(f"❌ Zarinpal verify timeout: {msg}")
             return {"success": False, "error": msg, "status": "TIMEOUT"}
         
@@ -132,7 +133,7 @@ class ZarinpalClient:
                 
                 # Step 6: Extract the real error message and code from the innermost 'errors' object.
                 final_errors = final_data.get("errors", {})
-                message = final_errors.get("message", "Could not parse final Zarinpal error.")
+                message = final_errors.get("message", messages.COULD_NOT_PARSE_ZARINPAL_ERROR)
                 code = final_errors.get("code")
                 
                 logfire.info(f"✅ Successfully parsed nested Zarinpal error. Code: {code}, Message: {message}")

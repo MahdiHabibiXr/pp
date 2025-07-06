@@ -1,3 +1,5 @@
+# src/handlers/commands.py
+
 import logging
 from datetime import datetime
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
@@ -5,6 +7,7 @@ from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from src.bot import bot
 from src.models.user import User
 from src.models.app_config import AppConfig
+from src.texts import messages
 
 logger = logging.getLogger("pp_bot.handlers.commands")
 
@@ -39,10 +42,7 @@ async def start_cmd(message: Message):
 
     await bot.send_message(
         chat_id,
-        "Welcome to the Product Placement Bot!\n"
-        "Use /generate to create an image.\n"
-        "Use /balance to check your credits.\n"
-        "Use /buy to purchase credit packages."
+        messages.WELCOME
     )
 
 
@@ -55,7 +55,7 @@ async def balance_cmd(message: Message):
     user = await User.find_one(User.chat_id == chat_id)
     credits = user.credits if user else 0
 
-    await bot.send_message(chat_id, f"Your balance: {credits} credits.")
+    await bot.send_message(chat_id, messages.BALANCE_CHECK.format(credits=credits))
     logger.info(f"[balance_cmd] chat_id={chat_id} credits={credits}")
 
 
@@ -72,7 +72,7 @@ async def buy_cmd(message: Message):
     text = (
         cfg_shop.shop_menu_message
         if cfg_shop and cfg_shop.shop_menu_message
-        else "بسته‌ای برای نمایش وجود ندارد."
+        else messages.NO_PACKAGES
     )
 
     markup = InlineKeyboardMarkup()
