@@ -12,14 +12,24 @@ class Generation(Document):
     """
     uid: UUID = Field(default_factory=uuid4)
     chat_id: int
-    photo_file_id: str  # <-- ADDED: To store the file_id of the initial photo
-    service: Optional[str] = None # <-- ADDED: To store the selected service
+    photo_file_id: str
+    
+    # --- New fields for the new flow ---
+    generation_mode: Optional[str] = None # template, manual, automatic
+    template_id: Optional[str] = None
+    product_name: Optional[str] = None
+    # ---
+
+    service: Optional[str] = None
     description: Optional[str] = None
     input_url: Optional[HttpUrl] = None
-    prompt: Optional[str] = None # <-- CHANGED: Made optional
+    prompt: Optional[str] = None
     model_name: str
     replicate_id: Optional[str] = None
-    status: str             # init, awaiting_description, awaiting_confirmation, inqueue, processing, done, error, cancelled
+    
+    # --- Updated statuses ---
+    status: str # init, awaiting_mode_selection, awaiting_template_selection, awaiting_product_name, awaiting_description, awaiting_confirmation, inqueue, processing, done, error, cancelled
+    
     result_url: Optional[HttpUrl] = None
     error: Optional[str] = None
     cost: Optional[float] = None

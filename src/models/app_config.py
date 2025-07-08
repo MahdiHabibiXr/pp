@@ -1,7 +1,7 @@
 from beanie import Document
 from pydantic import Field
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict 
 
 class AppConfig(Document):
     """
@@ -13,6 +13,7 @@ class AppConfig(Document):
     shop_menu_message: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    style_templates: Optional[List[Dict[str, str]]] = None
 
     class Settings:
         name = "app_config"
