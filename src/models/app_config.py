@@ -14,6 +14,7 @@ class AppConfig(Document):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     style_templates: Optional[List[Dict[str, str]]] = None
+    service_costs: Optional[Dict[str, Dict[str, int]]] = None
 
     class Settings:
         name = "app_config"

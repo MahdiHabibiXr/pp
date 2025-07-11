@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     LOGFIRE_TOKEN: str = Field(..., env="LOGFIRE_TOKEN")
     ZARINPAL_MERCHANT_MOBILE: str = Field(..., env="ZARINPAL_MERCHANT_MOBILE")
     ZARINPAL_MERCHANT_EMAIL: str = Field(..., env="ZARINPAL_MERCHANT_EMAIL")
+    REFERRAL_REWARD_COINS: int = Field(default=1, env="REFERRAL_REWARD_COINS")
 
     class Config:
         env_file = ".env"

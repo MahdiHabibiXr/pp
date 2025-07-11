@@ -14,11 +14,10 @@ class Generation(Document):
     chat_id: int
     photo_file_id: str
     
-    # --- New fields for the new flow ---
+    is_paid_user: bool = False # To prioritize paid users in the queue
     generation_mode: Optional[str] = None # template, manual, automatic
     template_id: Optional[str] = None
     product_name: Optional[str] = None
-    # ---
 
     service: Optional[str] = None
     description: Optional[str] = None

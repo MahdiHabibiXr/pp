@@ -343,3 +343,34 @@ async def handle_resend_image(call: CallbackQuery):
         await bot.send_photo(call.message.chat.id, photo=gen.result_url, caption=f"تصویر پروژه: {gen.description or gen.product_name}")
     else:
         await bot.answer_callback_query(call.id, text="متاسفانه تصویر این پروژه یافت نشد.", show_alert=True)
+
+
+@bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("cancel_"))
+async def handle_cancel_request(call: CallbackQuery):
+    """
+    Handles the 'Cancel Request' button from the project history.
+    """
+    chat_id = call.message.chat.id
+    try:
+        gen_uid = UUID(call.data.split("_")[1])
+    except (IndexError, ValueError):
+        return await bot.answer_callback_query(call.id, messages.GENERIC_ERROR, show_alert=True)
+
+    gen = await Generation.find_one(Generation.uid == gen_uid, Generation.chat_id == chat_id)
+
+    if not gen:
+        return await bot.answer_callback_query(call.id, "پروژه یافت نشد.", show_alert=True)
+
+    if gen.status == "inqueue":
+        gen.status = "cancelled"
+        await gen.save()
+        
+        # Refund credits
+        user = await User.find_one(User.chat_id == chat_id)
+        if user and gen.cost:
+            user.credits += gen.cost
+            await user.save()
+        
+        await bot.edit_message_text(messages.REQUEST_CANCELLED_SUCCESS, chat_id, call.message.message_id)
+    else:
+        await bot.answer_callback_query(call.id, messages.REQUEST_ALREADY_PROCESSED, show_alert=True)
