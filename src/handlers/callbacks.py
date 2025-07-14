@@ -12,21 +12,27 @@ from src.models.user import User
 from src.models.generation import Generation
 from src.services.zarinpal_client import ZarinpalClient
 from src.texts import messages, buttons
-from src.handlers.messages import process_generation_request
+from src.handlers.messages import process_generation_request, show_confirmation_prompt
 
 logger = logging.getLogger("pp_bot.handlers.callbacks")
 
 # --- UPDATED HELPER FUNCTION FOR THE NEW GALLERY ---
-async def show_template_gallery(chat_id: int, gen_uid: UUID, page: int = 0):
+async def show_template_gallery(chat_id: int, gen_uid: UUID, page: int = 0, gender: str = None):
     """
-    Sends a media group of template samples and a separate message with named selection buttons.
+    Displays a paginated gallery for either product styles or modeling styles.
     """
-    PAGE_SIZE = 10
-    cfg = await AppConfig.find_one(AppConfig.type == "style_templates")
-    if not cfg or not cfg.style_templates:
-        return await bot.send_message(chat_id, "متاسفانه در حال حاضر قالبی وجود ندارد.")
+    PAGE_SIZE = 9 # Optimized for 3x3 button layout
+    
+    if gender: # Modeling templates are gender-specific
+        cfg = await AppConfig.find_one(AppConfig.type == "modeling_templates")
+        templates = cfg.female_templates if gender == 'female' else cfg.male_templates
+    else: # Product photoshoot templates
+        cfg = await AppConfig.find_one(AppConfig.type == "style_templates")
+        templates = cfg.style_templates
 
-    templates = cfg.style_templates
+    if not cfg or not templates:
+        return await bot.send_message(chat_id, "متاسفانه در حال حاضر قالبی برای این بخش وجود ندارد.")
+
     start_index = page * PAGE_SIZE
     end_index = start_index + PAGE_SIZE
     paginated_templates = templates[start_index:end_index]
@@ -34,49 +40,50 @@ async def show_template_gallery(chat_id: int, gen_uid: UUID, page: int = 0):
     if not paginated_templates:
         return await bot.send_message(chat_id, "قالب دیگری برای نمایش وجود ندارد.")
 
-    # 1. Prepare and send Media Group
     media_group = []
     for template in paginated_templates:
-        # Ensure each template has a sample image URL
         if template.get("sample_image_url"):
-            media_group.append(InputMediaPhoto(media=template["sample_image_url"]))
+            media_group.append(InputMediaPhoto(
+                media=template["sample_image_url"],
+                caption=template["name"] if len(media_group) == 0 else ""
+            ))
     
-    if media_group:
-        await bot.send_media_group(chat_id, media=media_group)
-
-    # 2. Prepare Buttons with template names
-    markup = InlineKeyboardMarkup(row_width=2)
-    template_buttons = []
-    for template in paginated_templates:
-        # Use the template's actual name for the button text
-        template_buttons.append(
-            InlineKeyboardButton(template["name"], callback_data=f"select_template_{gen_uid}_{template['id']}")
-        )
+    markup = InlineKeyboardMarkup(row_width=3)
+    template_buttons = [
+        InlineKeyboardButton(f"«{t['name']}»", callback_data=f"select_template_{gen_uid}_{t['id']}")
+        for t in paginated_templates
+    ]
     markup.add(*template_buttons)
 
-    # 3. Prepare Pagination Buttons
     pagination_buttons = []
+    gender_payload = f"_{gender}" if gender else ""
     if page > 0:
         pagination_buttons.append(
-            InlineKeyboardButton("⬅️ صفحه قبلی", callback_data=f"gallery_page_{gen_uid}_{page - 1}")
+            InlineKeyboardButton("⬅️ قبلی", callback_data=f"gallery_page_{gen_uid}_{page - 1}{gender_payload}")
         )
     if end_index < len(templates):
         pagination_buttons.append(
-            InlineKeyboardButton("صفحه بعدی ➡️", callback_data=f"gallery_page_{gen_uid}_{page + 1}")
+            InlineKeyboardButton("بعدی ➡️", callback_data=f"gallery_page_{gen_uid}_{page + 1}{gender_payload}")
         )
     if pagination_buttons:
         markup.add(*pagination_buttons)
 
-    # 4. Send the button panel
+    if media_group:
+        await bot.send_media_group(chat_id, media=media_group)
     await bot.send_message(chat_id, messages.SELECT_TEMPLATE, reply_markup=markup)
+
 
 
 @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("select_service_"))
 async def handle_service_selection(call: CallbackQuery):
-    # ... (بدون تغییر)
+    """
+    Handles the initial service selection (Product Photoshoot vs. Modeling).
+    """
     chat_id = call.message.chat.id
     try:
-        gen_uid = UUID(call.data.split("_")[2])
+        parts = call.data.split("_")
+        gen_uid = UUID(parts[2])
+        service = parts[3]
     except (IndexError, ValueError):
         return await bot.answer_callback_query(call.id, messages.GENERIC_ERROR, show_alert=True)
 
@@ -84,18 +91,53 @@ async def handle_service_selection(call: CallbackQuery):
     if not gen or gen.status != "init":
         return await bot.edit_message_text(messages.GENERATION_NOT_FOUND_FOR_USER, chat_id, call.message.message_id)
 
-    gen.status = "awaiting_mode_selection"
-    gen.service = "photoshoot"
+    gen.service = service
     await gen.save()
 
-    markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        InlineKeyboardButton(buttons.MODE_TEMPLATE, callback_data=f"select_mode_{gen_uid}_template"),
-        InlineKeyboardButton(buttons.MODE_MANUAL, callback_data=f"select_mode_{gen_uid}_manual"),
-        InlineKeyboardButton(buttons.MODE_AUTOMATIC, callback_data=f"select_mode_{gen_uid}_automatic")
-    )
-    await bot.edit_message_text(messages.SELECT_MODE, chat_id, call.message.message_id, reply_markup=markup)
+    if service == "photoshoot":
+        gen.status = "awaiting_mode_selection"
+        await gen.save()
+        markup = InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            InlineKeyboardButton(buttons.MODE_TEMPLATE, callback_data=f"select_mode_{gen_uid}_template"),
+            InlineKeyboardButton(buttons.MODE_MANUAL, callback_data=f"select_mode_{gen_uid}_manual"),
+            InlineKeyboardButton(buttons.MODE_AUTOMATIC, callback_data=f"select_mode_{gen_uid}_automatic")
+        )
+        await bot.edit_message_text(messages.SELECT_MODE, chat_id, call.message.message_id, reply_markup=markup)
+    
+    elif service == "modeling":
+        gen.status = "awaiting_model_gender"
+        await gen.save()
+        markup = InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            InlineKeyboardButton(buttons.MODEL_GENDER_FEMALE, callback_data=f"select_gender_{gen_uid}_female"),
+            InlineKeyboardButton(buttons.MODEL_GENDER_MALE, callback_data=f"select_gender_{gen_uid}_male")
+        )
+        await bot.edit_message_text(messages.SELECT_MODEL_GENDER, chat_id, call.message.message_id, reply_markup=markup)
 
+@bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("select_gender_"))
+async def handle_gender_selection(call: CallbackQuery):
+    """
+    Handles model gender selection and shows the modeling template gallery.
+    """
+    chat_id = call.message.chat.id
+    try:
+        parts = call.data.split("_")
+        gen_uid = UUID(parts[2])
+        gender = parts[3]
+    except (IndexError, ValueError):
+        return await bot.answer_callback_query(call.id, messages.GENERIC_ERROR, show_alert=True)
+
+    gen = await Generation.find_one(Generation.uid == gen_uid, Generation.chat_id == chat_id)
+    if not gen or gen.status != "awaiting_model_gender":
+        return await bot.edit_message_text(messages.GENERATION_NOT_FOUND_FOR_USER, chat_id, call.message.message_id)
+    
+    gen.model_gender = gender
+    gen.status = "awaiting_template_selection"
+    await gen.save()
+    
+    await bot.delete_message(chat_id, call.message.message_id)
+    await show_template_gallery(chat_id, gen_uid, page=0, gender=gender)
 
 @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("select_mode_"))
 async def handle_mode_selection(call: CallbackQuery):
@@ -137,24 +179,26 @@ async def handle_mode_selection(call: CallbackQuery):
 @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("gallery_page_"))
 async def handle_gallery_pagination(call: CallbackQuery):
     """
-    Handles next/previous page buttons by deleting the old panel and showing a new one.
+    Handles next/previous page buttons for both gallery types.
     """
     chat_id = call.message.chat.id
     try:
         parts = call.data.split("_")
         gen_uid = UUID(parts[2])
         page = int(parts[3])
+        # Gender might be empty, so handle it carefully
+        gender = parts[4] if len(parts) > 4 and parts[4] else None
     except (IndexError, ValueError):
         return await bot.answer_callback_query(call.id, messages.GENERIC_ERROR, show_alert=True)
     
     await bot.delete_message(chat_id, call.message.message_id)
-    await show_template_gallery(chat_id, gen_uid, page)
+    await show_template_gallery(chat_id, gen_uid, page, gender=gender)
 
 
 @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("select_template_"))
 async def handle_template_selection(call: CallbackQuery):
     """
-    UPDATED: Deletes the button panel after selection.
+    Handles final template selection for both services.
     """
     chat_id = call.message.chat.id
     try:
@@ -170,12 +214,17 @@ async def handle_template_selection(call: CallbackQuery):
         return await bot.send_message(chat_id, messages.GENERATION_NOT_FOUND_FOR_USER)
         
     gen.template_id = template_id
-    gen.status = "awaiting_product_name"
     await gen.save()
     
     await bot.delete_message(chat_id, call.message.message_id)
-    await bot.send_message(chat_id, messages.PROVIDE_PRODUCT_NAME)
-
+    
+    # For modeling, go directly to confirmation. For photoshoot, ask for product name.
+    if gen.service == "modeling":
+        await show_confirmation_prompt(gen)
+    else: # photoshoot
+        gen.status = "awaiting_product_name"
+        await gen.save()
+        await bot.send_message(chat_id, messages.PROVIDE_PRODUCT_NAME)
 
 @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("confirm_"))
 async def handle_confirmation(call: CallbackQuery):

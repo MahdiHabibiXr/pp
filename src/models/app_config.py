@@ -1,3 +1,5 @@
+# src/models/app_config.py
+
 from beanie import Document
 from pydantic import Field
 from datetime import datetime
@@ -13,7 +15,15 @@ class AppConfig(Document):
     shop_menu_message: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # For Product Photoshoot service
     style_templates: Optional[List[Dict[str, str]]] = None
+    
+    # For Modeling service
+    male_templates: Optional[List[Dict[str, str]]] = None
+    female_templates: Optional[List[Dict[str, str]]] = None
+
+    # For cost calculation
     service_costs: Optional[Dict[str, Dict[str, int]]] = None
 
     class Settings:

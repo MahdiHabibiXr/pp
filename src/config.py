@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     ZARINPAL_MERCHANT_MOBILE: str = Field(..., env="ZARINPAL_MERCHANT_MOBILE")
     ZARINPAL_MERCHANT_EMAIL: str = Field(..., env="ZARINPAL_MERCHANT_EMAIL")
     REFERRAL_REWARD_COINS: int = Field(default=1, env="REFERRAL_REWARD_COINS")
-
+    MANDATORY_CHANNEL_ID: str = Field(default="@PhotosazAI", env="MANDATORY_CHANNEL_ID")
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

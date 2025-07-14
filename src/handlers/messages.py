@@ -24,7 +24,8 @@ logger = logging.getLogger("pp_bot.handlers.messages")
 @bot.message_handler(content_types=["photo"])
 async def handle_photo(message: Message):
     """
-    Starts the generation flow by creating a Generation document.
+    Starts the generation flow by creating a Generation document
+    and asking the user to select a service.
     """
     chat_id = message.chat.id
     
@@ -37,9 +38,11 @@ async def handle_photo(message: Message):
     await gen.insert()
     logger.info(f"[handle_photo] New generation created. uid={gen.uid}")
 
-    markup = InlineKeyboardMarkup()
-    callback_data = f"select_service_{gen.uid}_photoshoot"
-    markup.add(InlineKeyboardButton(buttons.PRODUCT_PHOTOSHOOT, callback_data=callback_data))
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton(buttons.PRODUCT_PHOTOSHOOT, callback_data=f"select_service_{gen.uid}_photoshoot"),
+        InlineKeyboardButton(buttons.MODELING_PHOTOSHOOT, callback_data=f"select_service_{gen.uid}_modeling")
+    )
 
     await bot.send_message(chat_id, messages.SELECT_SERVICE, reply_markup=markup)
 
@@ -69,7 +72,7 @@ async def handle_text_messages(message: Message):
         await bot.send_message(chat_id, messages.UNEXPECTED_TEXT_PROMPT)
         return
 
-    # Sanitize the input text by escaping double quotes and replacing newlines.
+    # Sanitize the input text by escaping double quotes and replacing newlines for database storage.
     sanitized_text = message.text.replace('"', '\\"').replace('\n', '\\n')
 
     # --- State-aware logic ---
@@ -91,30 +94,49 @@ async def show_confirmation_prompt(gen: Generation):
     UPDATED: Desanitizes text before showing it to the user for a clean display.
     """
     gen.status = "awaiting_confirmation"
-    gen.updated_at = datetime.utcnow()
     await gen.save()
 
     caption = ""
-    if gen.generation_mode == "template":
-        cfg = await AppConfig.find_one(AppConfig.type == "style_templates")
-        template_name = "N/A"
-        if cfg and cfg.style_templates:
-            for t in cfg.style_templates:
-                if t["id"] == gen.template_id:
-                    template_name = t["name"]
-                    break
+    if gen.service == "photoshoot":
+        mode_text = ""
+        if gen.generation_mode == "template": mode_text = "قالب آماده"
+        elif gen.generation_mode == "manual": mode_text = "دستی"
+        elif gen.generation_mode == "automatic": mode_text = "خودکار"
         
-        # Create a display-friendly version of the product name
-        display_product_name = gen.product_name.replace('\\n', '\n').replace('\\"', '"')
-        caption = messages.CONFIRMATION_PROMPT_TEMPLATE.format(
-            template_name=template_name,
-            product_name=display_product_name
-        )
+        description_text = ""
+        if gen.generation_mode == "template":
+            cfg = await AppConfig.find_one(AppConfig.type == "style_templates")
+            template_name = "N/A"
+            if cfg and cfg.style_templates:
+                for t in cfg.style_templates:
+                    if t["id"] == gen.template_id:
+                        template_name = t["name"]; break
+            
+            # Create a display-friendly version of the product name
+            display_product_name = gen.product_name.replace('\\n', '\n').replace('\\"', '"')
+            description_text = f"قالب: {template_name}\nنام محصول: {display_product_name}"
+        else:
+            # Create a display-friendly version of the description
+            display_description = gen.description.replace('\\n', '\n').replace('\\"', '"')
+            description_text = display_description
+
+        caption = messages.CONFIRMATION_PROMPT_PHOTOSHOOT.format(mode=mode_text, description=description_text)
     
-    elif gen.generation_mode in ["manual", "automatic"]:
-        # Create a display-friendly version of the description
-        display_description = gen.description.replace('\\n', '\n').replace('\\"', '"')
-        caption = messages.CONFIRMATION_PROMPT_MANUAL.format(description=display_description)
+    elif gen.service == "modeling":
+        cfg = await AppConfig.find_one(AppConfig.type == "modeling_templates")
+        template_name = "N/A"
+        gender_text = "زن" if gen.model_gender == "female" else "مرد"
+        templates_list = cfg.female_templates if gen.model_gender == "female" else cfg.male_templates
+        
+        if cfg and templates_list:
+            for t in templates_list:
+                if t["id"] == gen.template_id:
+                    template_name = t["name"]; break
+        
+        caption = messages.CONFIRMATION_PROMPT_MODELING.format(
+            gender=gender_text,
+            template_name=template_name
+        )
 
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -146,8 +168,11 @@ async def process_generation_request(generation_id: UUID):
     costs_cfg = await AppConfig.find_one(AppConfig.type == "service_costs")
     cost = 1
     if costs_cfg and costs_cfg.service_costs:
-        try: cost = costs_cfg.service_costs[gen.service][gen.generation_mode]
-        except (TypeError, KeyError): logger.error(f"Could not determine cost for service={gen.service}, mode={gen.generation_mode}. Using fallback.")
+        try:
+            mode = gen.generation_mode or "template"
+            cost = costs_cfg.service_costs[gen.service][mode]
+        except (TypeError, KeyError):
+            logger.error(f"Could not determine cost for service={gen.service}, mode={gen.generation_mode or 'template'}. Using fallback.")
     gen.cost = cost
 
     # 2. Check credits
