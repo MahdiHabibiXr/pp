@@ -16,17 +16,16 @@ from src.handlers.messages import process_generation_request, show_confirmation_
 
 logger = logging.getLogger("pp_bot.handlers.callbacks")
 
-# --- UPDATED HELPER FUNCTION FOR THE NEW GALLERY ---
 async def show_template_gallery(chat_id: int, gen_uid: UUID, page: int = 0, gender: str = None):
     """
-    Displays a paginated gallery for either product styles or modeling styles.
+    Displays a paginated gallery with a static caption.
     """
-    PAGE_SIZE = 9 # Optimized for 3x3 button layout
+    PAGE_SIZE = 8
     
-    if gender: # Modeling templates are gender-specific
+    if gender:
         cfg = await AppConfig.find_one(AppConfig.type == "modeling_templates")
         templates = cfg.female_templates if gender == 'female' else cfg.male_templates
-    else: # Product photoshoot templates
+    else:
         cfg = await AppConfig.find_one(AppConfig.type == "style_templates")
         templates = cfg.style_templates
 
@@ -45,10 +44,11 @@ async def show_template_gallery(chat_id: int, gen_uid: UUID, page: int = 0, gend
         if template.get("sample_image_url"):
             media_group.append(InputMediaPhoto(
                 media=template["sample_image_url"],
-                caption=template["name"] if len(media_group) == 0 else ""
+                # --- THIS LINE IS NOW UPDATED ---
+                caption=messages.GALLERY_CAPTION if len(media_group) == 0 else ""
             ))
     
-    markup = InlineKeyboardMarkup(row_width=3)
+    markup = InlineKeyboardMarkup(row_width=2)
     template_buttons = [
         InlineKeyboardButton(f"«{t['name']}»", callback_data=f"select_template_{gen_uid}_{t['id']}")
         for t in paginated_templates
@@ -71,7 +71,6 @@ async def show_template_gallery(chat_id: int, gen_uid: UUID, page: int = 0, gend
     if media_group:
         await bot.send_media_group(chat_id, media=media_group)
     await bot.send_message(chat_id, messages.SELECT_TEMPLATE, reply_markup=markup)
-
 
 
 @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("select_service_"))
