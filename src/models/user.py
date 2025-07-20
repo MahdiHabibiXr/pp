@@ -3,7 +3,7 @@
 from beanie import Document
 from pydantic import Field
 from datetime import datetime
-from uuid import UUID, uuid4  # <-- 'uuid4' is now imported here
+from uuid import UUID, uuid4
 from typing import List, Optional
 
 class User(Document):
@@ -19,7 +19,8 @@ class User(Document):
     credits: int = 10
     paid: bool = False
     
-    referred_by: Optional[int] = None
+    referred_by: Optional[int] = None 
+    
     refs: List[int] = Field(default_factory=list)
     
     created_at: datetime = Field(default_factory=datetime.utcnow)

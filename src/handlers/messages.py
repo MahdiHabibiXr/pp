@@ -157,8 +157,7 @@ async def show_confirmation_prompt(gen: Generation):
 
 async def process_generation_request(generation_id: UUID):
     """
-    OVERHAULED: This function now prepares the final prompt in-house
-    before queueing the request.
+    OVERHAULED: Now generates prompts in-house using OpenAIClient before queueing.
     """
     gen = await Generation.find_one(Generation.uid == generation_id)
     if not gen: return logger.error(f"Could not find generation uid={generation_id}")
@@ -202,24 +201,20 @@ async def process_generation_request(generation_id: UUID):
         final_prompt = ""
         openai_client = OpenAIClient()
         
-        # --- PHOTOSHOOT SERVICE ---
         if gen.service == "photoshoot":
             if gen.generation_mode == "template":
                 cfg = await AppConfig.find_one(AppConfig.type == "style_templates")
                 if cfg and cfg.style_templates:
                     for t in cfg.style_templates:
                         if t["id"] == gen.template_id:
-                            final_prompt = t["prompt"]; break
+                            final_prompt = t["prompt"].replace("{product_name}", "this product"); break
             
             elif gen.generation_mode == "manual":
-                # system_prompt = "You are a precise and literal translator and prompt formatter. Your task is to take a user's description, which is in Persian, and perform two steps:\n1. Translate the user's description literally and accurately into English. Do NOT add any new creative ideas, artistic styles, lighting effects, or quality descriptors (like \"4k\", \"cinematic\", \"masterpiece\") unless the user has explicitly mentioned them. The goal is to preserve the user's original intent as closely as possible.\n2. Reformat the translated English text into a single string of keywords and phrases, separated by commas, which is suitable for an image generation model.\n\nYour entire response must be ONLY the final, comma-separated prompt string. Do not include any explanations, introductory text, or quotation marks.\n\nExample 1:\nUser's Persian input: \"یک بسته چیپس پفک روی یک میز چوبی در یک کافه دنج\"\nYour English output: \"a bag of Cheetoz puff chips, on a wooden table, in a cozy cafe\"\n\nExample 2:\nUser's Persian input: \"عکس سینمایی از یک ماشین قرمز اسپرت در شب با نورپردازی نئونی\"\nYour English output: \"cinematic photo, a red sports car, at night, with neon lighting\""
-                final_prompt = await openai_client.generate_prompt_from_text(prompts.MANUAL_MODE_PROMPT, gen.description)
+                final_prompt = await openai_client.generate_prompt_from_text(gen.description)
 
             elif gen.generation_mode == "automatic":
-                # system_prompt = "**[ROLE & GOAL]**\nYou are \"VisioPrompt,\" an expert AI Creative Director specializing in creating prompts for AI image generators. Your mission is to transform a simple product title and a product image into a rich, detailed, and evocative photoshoot prompt. The final generated image should be a beautiful, high-end lifestyle advertisement that makes the product look irresistible and aspirational.\n\n**[CORE TASK & CRUCIAL RULES]**\nYou will be given a product title and an image. Your task is to construct a detailed prompt that describes a complete **SCENE AROUND the product**.\n* **Most Important Rule:** Do NOT describe the product itself (its color, shape, etc.). Assume the user's product image will be perfectly placed into the scene you create. Your prompt must only contain keywords for the environment, background, lighting, and overall mood.\n* **Text Rule:** Do NOT include any keywords that would add new text, words, or logos to the image.\n\n**[YOUR THOUGHT PROCESS - How to approach each request]**\n\n1.  **Analyze the Inputs:**\n    * **Product Title & Image:** Analyze the product to silently determine its category (e.g., skincare, tech, food, fashion) and its vibe (e.g., minimalist, rustic, futuristic).\n\n2.  **Brainstorm the Lifestyle Concept based on the Category:**\n    * **If Apparel & Accessories:**\n        * **CRUCIAL EXCEPTION: If the product is wristwear (like a watch or bracelet),** the prompt must be a dramatic product shot scene for the item itself, **NOT on a model's wrist**. Place it on a luxurious surface like dark marble or polished wood.\n        * For all **other apparel** (clothing, shoes, bags), the prompt MUST describe a scene suitable for a model who is wearing the product (e.g., \"a stylish model walking down a rain-slicked city street\"). You describe the scene, not the model.\n    * For other categories, invent a creative and professional setting that matches the product's function and tells a story about the lifestyle associated with it.\n\n3.  **Construct the Prompt using the Following Structure:**\n    * Start with a high-level description of the entire scene.\n    * Describe the background, environment, and supporting elements.\n    * Specify the lighting, color palette, and atmosphere.\n    * Add photography and style keywords (e.g., 'cinematic lighting', '4k', 'masterpiece').\n\n**[OUTPUT FORMAT]**\nYour final output must be a single, detailed, comma-separated block of text. Do not include the category name or any explanations.\n\n---\n**[EXAMPLES]**\n\n**Example 1 (Wristwear):**\n* **User Input:** \"ساعت مچی مردانه لوکس\"\n* **Your Output:**\n    A dramatic product shot scene, a dark polished oak surface, next to a pair of leather gloves and a high-end fountain pen, moody and focused lighting, macro photography style, sharp focus, ultra-detailed, 8k, professional advertisement.\n\n**Example 2 (Apparel):**\n* **User Input:** \"کاپشن چرم مردانه\"\n* **Your Output:**\n    A scene on a rain-slicked city street at night, with neon lights from storefronts reflecting on the wet ground, cinematic, moody atmosphere, shallow depth of field, fashion advertisement style, 4k, photorealistic.\n\n---\nYou are now ready to begin. Await the user's product title and image.If no image provided, avoid generating prompt based on the image and just user text input. Instead of decriging or naming the product in the output prompt use \"this product\" in the prompt so the image generator can generate an image bsed on the provided product image. This is not a chat session so you SHOULD response with a prompt even with not enough data"
-                final_prompt = await openai_client.generate_prompt_from_image(prompts.AUTOMATIC_MODE_PROMPT, gen.description, file_bytes)
+                final_prompt = await openai_client.generate_prompt_from_image(gen.description, file_bytes)
         
-        # --- MODELING SERVICE ---
         elif gen.service == "modeling":
             cfg = await AppConfig.find_one(AppConfig.type == "modeling_templates")
             templates = cfg.female_templates if gen.model_gender == "female" else cfg.male_templates
