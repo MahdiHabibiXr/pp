@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from uuid import UUID
 from datetime import datetime
+import mimetypes 
 
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from beanie.operators import In, And
@@ -158,6 +159,7 @@ async def show_confirmation_prompt(gen: Generation):
 async def process_generation_request(generation_id: UUID):
     """
     OVERHAULED: Now generates prompts in-house using OpenAIClient before queueing.
+    FIXED: Ensures image is uploaded and URL is obtained BEFORE calling OpenAI.
     """
     gen = await Generation.find_one(Generation.uid == generation_id)
     if not gen: return logger.error(f"Could not find generation uid={generation_id}")
@@ -193,11 +195,20 @@ async def process_generation_request(generation_id: UUID):
     try:
         loading_message = await bot.send_message(chat_id, messages.PROCESSING_REQUEST)
 
-        # 4. Download image bytes (needed for both upload and OpenAI)
+        # 4. Download image bytes
         file_info = await bot.get_file(gen.photo_file_id)
         file_bytes = await bot.download_file(file_info.file_path)
 
-        # 5. Generate final prompt based on service and mode
+        # --- CORRECTED LOGIC ---
+        # 5. Upload image to storage FIRST to get the URL
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+            tmp_path.write_bytes(file_bytes)
+        input_url = await tapsage_upload(tmp_path, file_name=tmp_path.name)
+        gen.input_url = str(input_url) # Save the URL to the generation object
+        tmp_path.unlink()
+        
+        # 6. Now, generate the prompt using the obtained URL
         final_prompt = ""
         openai_client = OpenAIClient()
         
@@ -213,7 +224,8 @@ async def process_generation_request(generation_id: UUID):
                 final_prompt = await openai_client.generate_prompt_from_text(gen.description)
 
             elif gen.generation_mode == "automatic":
-                final_prompt = await openai_client.generate_prompt_from_image(gen.description, file_bytes)
+                # Now we have a valid URL in gen.input_url
+                final_prompt = await openai_client.generate_prompt_from_image_url(gen.description, str(gen.input_url))
         
         elif gen.service == "modeling":
             cfg = await AppConfig.find_one(AppConfig.type == "modeling_templates")
@@ -225,14 +237,7 @@ async def process_generation_request(generation_id: UUID):
         
         gen.prompt = final_prompt
         logger.info(f"Final prompt for uid={gen.uid}: {final_prompt}")
-
-        # 6. Upload image to storage
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_file:
-            tmp_path = Path(tmp_file.name)
-            tmp_path.write_bytes(file_bytes)
-        input_url = await tapsage_upload(tmp_path, file_name=tmp_path.name)
-        gen.input_url = str(input_url)
-        tmp_path.unlink()
+        # --- END OF CORRECTED LOGIC ---
 
         # 7. Deduct credits and queue
         user.credits -= gen.cost
