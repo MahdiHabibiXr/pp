@@ -42,7 +42,7 @@ async def handle_photo(message: Message):
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         InlineKeyboardButton(buttons.PRODUCT_PHOTOSHOOT, callback_data=f"select_service_{gen.uid}_photoshoot"),
-        InlineKeyboardButton(buttons.MODELING_PHOTOSHOOT, callback_data=f"select_service_{gen.uid}_modeling")
+        # InlineKeyboardButton(buttons.MODELING_PHOTOSHOOT, callback_data=f"select_service_{gen.uid}_modeling")
     )
 
     await bot.send_message(chat_id, messages.SELECT_SERVICE, reply_markup=markup)

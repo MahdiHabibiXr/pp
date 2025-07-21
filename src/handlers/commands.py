@@ -217,7 +217,7 @@ async def handle_modeling_button(message: Message):
     if not await check_membership(message): return
     # This will trigger the modeling flow
     # For now, we just prompt the user, the actual flow starts with a photo.
-    await bot.send_message(message.chat.id, "برای شروع سرویس عکاسی با مدل، لطفا عکس لباس خود را ارسال کنید.")
+    await bot.send_message(message.chat.id, "برای شروع سرویس عکاسی با مدل، لطفا عکس لباس خود را ارسال کنید.\n\nاین قابلیت موقتا غیر فعال است")
 
 @bot.message_handler(func=lambda message: message.text == buttons.MAIN_KEYBOARD_PROJECTS)
 async def handle_my_projects_button(message: Message):

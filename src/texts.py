@@ -98,7 +98,7 @@ class ButtonLabels:
 
     # --- دکمه‌های سرویس‌ها ---
     PRODUCT_PHOTOSHOOT = "📸 عکاسی از محصول"
-    MODELING_PHOTOSHOOT = "👤 عکاسی با مدل"
+    MODELING_PHOTOSHOOT = "👤 عکاسی با مدل(غیرفعال)"
     
     # --- دکمه‌های مدلینگ ---
     MODEL_GENDER_MALE = "مرد"
