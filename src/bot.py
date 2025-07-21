@@ -1,10 +1,13 @@
+# src/bot.py
+
 from telebot.async_telebot import AsyncTeleBot
+from telebot.asyncio_storage import StateMemoryStorage
 from src.config import settings
 
-# Instantiate the asynchronous Telegram bot
-bot = AsyncTeleBot(settings.BOT_TOKEN)
+bot = AsyncTeleBot(settings.BOT_TOKEN, state_storage=StateMemoryStorage())
 
-# Register handler modules to attach their callbacks to the bot instance
-import src.handlers.commands  # noqa: F401
-import src.handlers.messages  # noqa: F401
-import src.handlers.callbacks  # noqa: F401
+# Register handler modules
+import src.handlers.commands
+import src.handlers.messages
+import src.handlers.callbacks
+# import src.handlers.admin 

@@ -12,7 +12,7 @@ class OpenAIClient:
         # Using Tapsage as a proxy for OpenAI
         self.api_key = settings.TAPSAGE_API_KEY
         self.api_url = "https://api.tapsage.com/openai/v1/chat/completions"
-        self.client = httpx.AsyncClient(timeout=90.0)
+        self.client = httpx.AsyncClient(timeout=90.0, verify=False)
 
     async def generate_prompt_from_text(self, user_text: str) -> str:
         """
