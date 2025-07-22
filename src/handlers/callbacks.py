@@ -191,6 +191,7 @@ async def handle_gallery_pagination(call: CallbackQuery):
         return await bot.answer_callback_query(call.id, messages.GENERIC_ERROR, show_alert=True)
     
     await bot.delete_message(chat_id, call.message.message_id)
+    # await bot.delete_message(chat_id, call.message.message_id-1)
     await show_template_gallery(chat_id, gen_uid, page, gender=gender)
 
 
@@ -210,12 +211,16 @@ async def handle_template_selection(call: CallbackQuery):
     gen = await Generation.find_one(Generation.uid == gen_uid, Generation.chat_id == chat_id)
     if not gen or gen.status != "awaiting_template_selection":
         await bot.delete_message(chat_id, call.message.message_id)
+        # await bot.delete_message(chat_id, call.message.message_id-1)
+
         return await bot.send_message(chat_id, messages.GENERATION_NOT_FOUND_FOR_USER)
         
     gen.template_id = template_id
     await gen.save()
     
     await bot.delete_message(chat_id, call.message.message_id)
+    # await bot.delete_message(chat_id, call.message.message_id-1)
+
     
     # For modeling, go directly to confirmation. For photoshoot, ask for product name.
     if gen.service == "modeling":
