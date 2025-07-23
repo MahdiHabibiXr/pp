@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  pp-bot:
+    build: .
+    restart: unless-stopped
+    container_name: pp-bot-container
+    env_file:
+      - .env
+    networks:
+      - nedaai-mongo-net
+
+networks:
+  nedaai-mongo-net:
+    external: true
+    name: nedaai-mongo-net
