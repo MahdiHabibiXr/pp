@@ -6,24 +6,24 @@ class MessageTexts:
     INVALID_CHOICE = "گزینه انتخاب شده معتبر نیست."
     PACKAGE_NOT_FOUND = "بسته انتخابی شما یافت نشد."
     UNEXPECTED_TEXT_PROMPT = "برای شروع یک پروژه جدید، لطفا ابتدا یک عکس از محصول خود را ارسال کنید. 🖼️"
-    PROMPT_TO_USE_BUTTONS = "لطفا برای ادامه، یکی از گزینه‌های موجود را با استفاده از دکمه‌ها انتخاب کنید. 👇"
+    PROMPT_TO_USE_BUTTONS = "لطفا برای ادامه، یکی از گزینه‌های موجود را با استفاده از دکمه‌ها انتخاب کنید."
 
     # --- جوین اجباری ---
     FORCED_JOIN_PROMPT = "کاربر گرامی، برای استفاده از امکانات ربات، لطفا ابتدا در کانال ما عضو شوید:\n\n{channel_link}\n\nپس از عضویت، دوباره دستور /start را اجرا کنید."
 
     # --- دستورات اصلی ---
     START = (
-        "به ربات هوشمند «محصولتو بذار» خوش آمدید!\n\n"
-        "من می‌توانم محصول شما را در تصاویر خلاقانه و حرفه‌ای قرار دهم.\n\n"
+        "به ربات هوشمند «عکسیفای» خوش آمدید!\n\n"
+        "من می‌توانم محصول شما را در شرایط خلاقانه و حرفه‌ای قرار دهم.\n\n"
         "📸 برای شروع، لطفا یک عکس از محصول خود را برای من ارسال کنید یا از دکمه‌های زیر استفاده کنید."
     )
     START_RETURN_USER = "خوش برگشتید! برای شروع یک پروژه جدید، لطفا عکس محصول خود را ارسال کنید یا از دکمه‌های زیر استفاده کنید."
     GENERATE_PROMPT = "برای شروع یک پروژه جدید، لطفا عکس محصول خود را ارسال کنید."
     BALANCE_CHECK = "موجودی اعتبار شما: {credits} سکه"
     HELP = (
-        "راهنمای ربات «محصولتو بذار»:\n\n"
+        "راهنمای ربات عکسیفای :\n\n"
         "🤖 **چطور کار می‌کند؟**\n"
-        "شما یک عکس از محصول خود ارسال می‌کنید و ربات با استفاده از هوش مصنوعی، آن را در یک تصویر جدید و جذاب قرار می‌دهد.\n\n"
+        "شما یک عکس از محصول خود ارسال می‌کنید و ربات با استفاده از هوش مصنوعی، آن را در یک محیط جدید و جذاب قرار می‌دهد.\n\n"
         "✅ **دستورات اصلی:**\n"
         "/generate - شروع فرآیند تولید عکس جدید\n"
         "/balance - مشاهده موجودی سکه‌های شما\n"
@@ -32,7 +32,7 @@ class MessageTexts:
         "/invite - دعوت از دوستان و دریافت هدیه\n"
         "/cancel - لغو درخواست فعلی\n"
         "/menu - نمایش منوی سریع دستورات\n"
-        "/help - نمایش همین راهنما"
+        "/help - نمایش راهنما"
     )
     MENU_PROMPT = "کدام گزینه را انتخاب می‌کنید؟"
     
@@ -59,7 +59,7 @@ class MessageTexts:
     CONFIRMATION_PROMPT_PHOTOSHOOT = "لطفا درخواست عکاسی محصول خود را بازبینی و تایید کنید:\n\n**حالت:** {mode}\n**توضیحات:** {description}"
     CONFIRMATION_PROMPT_MODELING = "لطفا درخواست عکاسی مدلینگ خود را بازبینی و تایید کنید:\n\n**جنسیت مدل:** {gender}\n**قالب انتخابی:** {template_name}"
     
-    REQUEST_ACCEPTED = "✅ درخواست شما تایید و به صف پردازش اضافه شد."
+    REQUEST_ACCEPTED = " تایید شد."
     REQUEST_CANCELLED = "❌ درخواست لغو شد. برای شروع مجدد، لطفا تصویر جدیدی ارسال کنید."
     EDIT_PROMPT_PRODUCT_NAME = "✏️ لطفا نام جدید محصول را وارد کنید."
     EDIT_PROMPT_DESCRIPTION = "✏️ لطفا توضیحات جدید خود را وارد کنید."
@@ -146,6 +146,7 @@ class SystemPrompts:
 3.  **Handle Apparel Correctly:**
     * If the product is **wristwear (watch, bracelet)**, create a dramatic product shot scene on a surface (e.g., "on a dark marble surface"), NOT on a model.
     * For all **other apparel**, describe a scene suitable for a model who is wearing the item (e.g., "a stylish model walking down a city street"). You must only describe the scene itself, not the model's appearance.
+4.  **Do not respond with sesnsitive prompts.
 
 **Output Format:**
 - A single string of English keywords.
@@ -159,6 +160,8 @@ class SystemPrompts:
 **Example (Apparel):**
 - User Input: "کاپشن چرم"
 - Your Output: A scene on a rain-slicked city street at night, neon lights from storefronts reflecting on the wet ground, cinematic, moody atmosphere, shallow depth of field, fashion advertisement style, 4k
+
+If the product was wearable cloth or garments, you must describe a scene suitable for a model who is wearing the product, not the product itself only.
 """
 #     AUTOMATIC_MODE_PROMPT = """**[ROLE & GOAL]**
 # You are "VisioPrompt," an expert AI Creative Director specializing in creating prompts for AI image generators. Your mission is to transform a simple product title and a product image into a rich, detailed, and evocative photoshoot prompt. The final generated image should be a beautiful, high-end lifestyle advertisement that makes the product look irresistible and aspirational.
