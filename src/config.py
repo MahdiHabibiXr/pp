@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     ZARINPAL_MERCHANT_MOBILE: str = Field(..., env="ZARINPAL_MERCHANT_MOBILE")
     ZARINPAL_MERCHANT_EMAIL: str = Field(..., env="ZARINPAL_MERCHANT_EMAIL")
     REFERRAL_REWARD_COINS: int = Field(default=1, env="REFERRAL_REWARD_COINS")
-    MANDATORY_CHANNEL_ID: str = Field(default="@PhotosazAI", env="MANDATORY_CHANNEL_ID")
+    MANDATORY_CHANNEL_ID: str = Field(..., env="MANDATORY_CHANNEL_ID")
     ADMIN_CHAT_IDS: list[int] = Field(default=[791927771], env="ADMIN_CHAT_IDS")
 
     class Config:
