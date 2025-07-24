@@ -339,7 +339,7 @@ async def verify_payment(call: CallbackQuery):
     if verify_res.get("success") and status in (100, 101):
         is_newly_verified = pay.status != "completed" and status == 100
         pay.status = "completed"
-        pay.transaction_id = verify_res.get("ref_id")
+        pay.transaction_id = str(verify_res.get("ref_id"))
         pay.completed_at = datetime.utcnow()
         await pay.save()
 
