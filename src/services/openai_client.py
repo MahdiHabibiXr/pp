@@ -41,16 +41,17 @@ class OpenAIClient:
                     "role": "system",
                     "content": prompts.AUTOMATIC_MODE_PROMPT
                 },
+                {"role": "user", "content": ""},  #this can maybe solve the not generating issues from open ai
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": user_text},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": image_url  # <-- Use the direct public link
-                            }
-                        }
+                        {"type": "text", "text": user_text}
+                        # {
+                        #     "type": "image_url",
+                        #     "image_url": {
+                        #         "url": image_url  
+                        #     }
+                        # }
                     ]
                 }
             ],
