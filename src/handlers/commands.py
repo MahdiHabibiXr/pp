@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, ChatMember
 from telebot.apihelper import ApiTelegramException
 
 from src.bot import bot
@@ -14,32 +14,55 @@ from src.config import settings
 
 logger = logging.getLogger("pp_bot.handlers.commands")
 
+# src/handlers/commands.py
+
+# Make sure these are at the top of the file
+import logging
+from telebot.types import Message, ChatMember
+from telebot.apihelper import ApiTelegramException
+from src.bot import bot
+from src.config import settings
+
+logger = logging.getLogger("pp_bot.handlers.commands")
+
+
 
 async def check_membership(message: Message):
     """
-    Checks if the user is a member of the mandatory channel.
-    Returns True if they are, otherwise sends a prompt and returns False.
+    Definitively checks if a user is a member of the mandatory channel.
+    Handles all cases, including when a user has left the channel.
     """
-    try:
-        # You need to add MANDATORY_CHANNEL_ID to your config file
-        channel_id = settings.MANDATORY_CHANNEL_ID
-        user_id = message.from_user.id
-        
-        member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
-        if member.status in ['creator', 'administrator', 'member']:
-            return True
-        else:
-            raise ApiTelegramException("User is not a member.", "", "")
-    except (AttributeError, ApiTelegramException):
-        # AttributeError will be raised if MANDATORY_CHANNEL_ID is not in settings
-        # ApiTelegramException if user is not a member
+    # try:
+    member = await bot.get_chat_member(
+        chat_id=settings.MANDATORY_CHANNEL_ID,
+        user_id=message.from_user.id
+    )
+    # print(member.status)
+    # This is the crucial check. If the user is a member, their status
+    # will be one of these three.
+    if member.status in ['creator', 'administrator', 'member']:
+        return True
+    else :
         channel_link = f"https://t.me/{settings.MANDATORY_CHANNEL_ID.lstrip('@')}"
         await bot.send_message(
             message.chat.id,
             messages.FORCED_JOIN_PROMPT.format(channel_link=channel_link)
         )
         return False
+        # else:
+        #     # For any other status (like 'left' or 'kicked'),
+        #     # we explicitly raise an exception to be handled below.
+        #     raise ApiTelegramException("User has left the channel or is not a member.", "", "")
 
+    # except ApiTelegramException:
+    #     # This block now catches BOTH API errors (like 'user not found')
+    #     # AND cases where the user's status is not 'member'.
+    #     channel_link = f"https://t.me/{settings.MANDATORY_CHANNEL_ID.lstrip('@')}"
+    #     await bot.send_message(
+    #         message.chat.id,
+    #         messages.FORCED_JOIN_PROMPT.format(channel_link=channel_link)
+    #     )
+    #     return False
 
 def create_main_keyboard():
     """
@@ -124,6 +147,7 @@ async def cancel_cmd(message: Message):
 @bot.message_handler(commands=["myprojects"])
 async def my_projects_cmd(message: Message):
     if not await check_membership(message): return
+
     chat_id = message.chat.id
     user_generations = await Generation.find(Generation.chat_id == chat_id).sort(-Generation.created_at).limit(5).to_list()
     if not user_generations:
