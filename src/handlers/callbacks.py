@@ -308,7 +308,7 @@ async def process_purchase(call: CallbackQuery):
 
     await bot.send_message(
         chat_id,
-        messages.PURCHASE_PROMPT.format(coins=coins, price=price),
+        messages.PURCHASE_PROMPT.format(coins=f"{coins:,}", price=f"{price:,}"),
         parse_mode="Markdown",
         reply_markup=markup
     )
@@ -352,7 +352,7 @@ async def verify_payment(call: CallbackQuery):
             
             await bot.send_message(
                 chat_id,
-                messages.PAYMENT_VERIFIED_SUCCESS.format(package_coins=pay.package_coins),
+                messages.PAYMENT_VERIFIED_SUCCESS.format(package_coins=f"{pay.package_coins:,}"),
                 parse_mode="Markdown"
             )
         else:

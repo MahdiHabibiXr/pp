@@ -193,7 +193,7 @@ async def balance_cmd(message: Message):
     chat_id = message.chat.id
     user = await User.find_one(User.chat_id == chat_id)
     credits = user.credits if user else 0
-    await bot.send_message(chat_id, messages.BALANCE_CHECK.format(credits=credits))
+    await bot.send_message(chat_id, messages.BALANCE_CHECK.format(credits=f"{credits:,}"))
 
 @bot.message_handler(commands=["buy"])
 async def buy_cmd(message: Message):

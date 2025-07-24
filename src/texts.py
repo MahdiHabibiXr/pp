@@ -38,13 +38,13 @@ class MessageTexts:
     
     # --- دستور /buy ---
     NO_PACKAGES = "در حال حاضر بسته‌ای برای خرید اعتبار وجود ندارد."
-    PURCHASE_PROMPT = "شما در حال خرید {coins} سکه به قیمت {price} تومان هستید. برای تکمیل پرداخت، روی دکمه زیر کلیک کنید."
+    PURCHASE_PROMPT = "شما در حال خرید {coins} سکه به قیمت {price} ریال هستید. برای تکمیل پرداخت، روی دکمه زیر کلیک کنید."
     PAYMENT_CREATION_ERROR = "خطا در ایجاد پرداخت: {err}"
     INVALID_PAYMENT_ID = "شناسه پرداخت نامعتبر است."
     PAYMENT_RECORD_NOT_FOUND = "سند پرداخت یافت نشد."
     PAYMENT_VERIFIED_SUCCESS = "پرداخت شما با موفقیت تایید شد. {package_coins} سکه به حساب شما اضافه شد."
     PAYMENT_ALREADY_VERIFIED = "این پرداخت قبلا تایید شده است."
-    PAYMENT_VERIFICATION_GENERIC_ERROR = "خطا در تایید پرداخت. شناسه پرداخت: {authority}"
+    PAYMENT_VERIFICATION_GENERIC_ERROR = "❌ پرداخت شما از طرف بانک تایید نشده است.\n\nدر صورتیکه مبلغی از حساب شما کسر شده باشد ظرف 72 ساعت به حساب شما بازگردانده خواهد شد\n\nاگر از پرداخت خود مطمئن هستید، چند دقیقه دیگر دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.\n\nکد پیگیری : {authority}"
     VERIFICATION_REQUEST_TIMEOUT = "درخواست تایید پرداخت منقضی شد. لطفا دوباره تلاش کنید."
     PAYMENT_REQUEST_TIMEOUT = "درخواست ایجاد پرداخت منقضی شد. لطفا دوباره تلاش کنید."
     COULD_NOT_PARSE_ZARINPAL_ERROR = "خطای ناشناخته از زرین‌پال."
