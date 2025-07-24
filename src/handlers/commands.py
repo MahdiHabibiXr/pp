@@ -90,7 +90,7 @@ async def start_cmd(message: Message):
         logger.info(f"[start_cmd] New user registered: chat_id={chat_id}, referred_by={referrer_id}")
 
         await bot.send_message(chat_id, welcome_message, reply_markup=create_main_keyboard())
-        await bot.send_message(chat_id, messages.NEW_USER_GIFT)
+        await bot.send_message(chat_id, messages.NEW_USER_GIFT.format(gift_amount=settings.NEW_USER_GIFT_COINS))
 
         if referrer_id:
             referrer = await User.find_one(User.chat_id == referrer_id)

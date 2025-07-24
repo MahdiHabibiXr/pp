@@ -5,6 +5,7 @@ from pydantic import Field
 from datetime import datetime
 from uuid import UUID, uuid4
 from typing import List, Optional
+from src.config import settings
 
 class User(Document):
     """
@@ -16,7 +17,7 @@ class User(Document):
     first_name: Optional[str]
     last_name: Optional[str]
     phone: Optional[str] = ""
-    credits: int = 10
+    credits: int = Field(default_factory=lambda: settings.NEW_USER_GIFT_COINS)
     paid: bool = False
     
     referred_by: Optional[int] = None 
