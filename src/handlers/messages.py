@@ -91,9 +91,11 @@ async def handle_text_messages(message: Message):
         await bot.send_message(chat_id, messages.PROMPT_TO_USE_BUTTONS)
 
 
+
 async def show_confirmation_prompt(gen: Generation):
     """
-    UPDATED: Desanitizes text before showing it to the user for a clean display.
+    Shows the confirmation prompt.
+    UPDATED: Truncates long descriptions in the caption to avoid Telegram API errors.
     """
     gen.status = "awaiting_confirmation"
     await gen.save()
@@ -114,17 +116,22 @@ async def show_confirmation_prompt(gen: Generation):
                     if t["id"] == gen.template_id:
                         template_name = t["name"]; break
 
-            # Create a display-friendly version of the product name
             display_product_name = gen.product_name.replace('\\n', '\n').replace('\\"', '"')
             description_text = f"قالب: {template_name}\nنام محصول: {display_product_name}"
         else:
-            # Create a display-friendly version of the description
             display_description = gen.description.replace('\\n', '\n').replace('\\"', '"')
-            description_text = display_description
+            
+            # --- START: NEW TRUNCATION LOGIC ---
+            if len(display_description) > 200:
+                description_text = display_description[:200] + "..."
+            else:
+                description_text = display_description
+            # --- END: NEW TRUNCATION LOGIC ---
 
         caption = messages.CONFIRMATION_PROMPT_PHOTOSHOOT.format(mode=mode_text, description=description_text)
     
     elif gen.service == "modeling":
+        # ... (this part remains unchanged)
         cfg = await AppConfig.find_one(AppConfig.type == "modeling_templates")
         template_name = "N/A"
         gender_text = "زن" if gen.model_gender == "female" else "مرد"

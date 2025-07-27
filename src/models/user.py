@@ -21,7 +21,7 @@ class User(Document):
     paid: bool = False
     
     referred_by: Optional[int] = None 
-    
+    is_active: bool = False
     refs: List[int] = Field(default_factory=list)
     
     created_at: datetime = Field(default_factory=datetime.utcnow)

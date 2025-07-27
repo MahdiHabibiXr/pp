@@ -85,57 +85,75 @@ def create_main_keyboard():
 @bot.message_handler(commands=["start"])
 async def start_cmd(message: Message):
     """
-    UPDATED: Now includes the mandatory join check.
+    Handles the /start command with a robust referral and channel join flow.
     """
-    # First, check for channel membership
-    if not await check_membership(message):
-        return
-
     chat_id = message.chat.id
+    
+    # ۱. استخراج کد معرف از لینک /start
     referrer_id = None
-    welcome_message = messages.START
-
     try:
         payload = message.text.split(" ")[1]
-        if payload.isdigit():
+        if payload.isdigit() and int(payload) != chat_id:
             referrer_id = int(payload)
-            if referrer_id == chat_id: referrer_id = None
     except IndexError:
         pass
 
+    # ۲. پیدا کردن یا ساختن یک رکورد اولیه برای کاربر
     user = await User.find_one(User.chat_id == chat_id)
     if not user:
-        new_user = User(
-            chat_id=chat_id, username=message.from_user.username, first_name=message.from_user.first_name,
-            last_name=message.from_user.last_name, referred_by=referrer_id
+        # اگر کاربر وجود ندارد، یک رکورد اولیه با اطلاعات معرف (در صورت وجود) می‌سازیم
+        user = User(
+            chat_id=chat_id,
+            username=message.from_user.username,
+            first_name=message.from_user.first_name,
+            last_name=message.from_user.last_name,
+            referred_by=referrer_id
         )
-        await new_user.insert()
-        logger.info(f"[start_cmd] New user registered: chat_id={chat_id}, referred_by={referrer_id}")
+        await user.insert()
+        logger.info(f"[start_cmd] Pre-registered user with chat_id={chat_id}, referred_by={referrer_id}")
 
-        await bot.send_message(chat_id, welcome_message, reply_markup=create_main_keyboard())
+    # ۳. بررسی عضویت در کانال
+    if not await check_membership(message):
+        # اگر کاربر عضو نیست، تابع متوقف می‌شود. اطلاعات معرف در دیتابیس ذخیره شده است.
+        return
+
+    # ۴. اگر کاربر عضو کانال است، فرآیند را ادامه می‌دهیم
+    
+    # بررسی می‌کنیم که آیا این اولین بار است که کاربر فعال می‌شود یا خیر
+    if not user.is_active:
+        # این یک کاربر جدید است که فرآیند را کامل می‌کند
+        user.is_active = True
+        user.updated_at = datetime.utcnow()
+        await user.save()
+        
+        logger.info(f"[start_cmd] New user activated: chat_id={chat_id}")
+        
+        # ارسال پیام خوشامدگویی و هدیه
+        await bot.send_message(chat_id, messages.START, reply_markup=create_main_keyboard())
         await bot.send_message(chat_id, messages.NEW_USER_GIFT.format(gift_amount=settings.NEW_USER_GIFT_COINS))
 
-        if referrer_id:
-            referrer = await User.find_one(User.chat_id == referrer_id)
+        # اگر کاربر توسط فردی دعوت شده، به او پاداش می‌دهیم
+        if user.referred_by:
+            referrer = await User.find_one(User.chat_id == user.referred_by)
             if referrer:
                 reward = settings.REFERRAL_REWARD_COINS
                 referrer.credits += reward
                 referrer.refs.append(chat_id)
                 await referrer.save()
-                logger.info(f"[start_cmd] Gave {reward} credits to referrer: chat_id={referrer_id}")
+                logger.info(f"[start_cmd] Gave {reward} credits to referrer: chat_id={referrer.chat_id}")
                 try:
                     await bot.send_message(
-                        referrer_id,
+                        referrer.chat_id,
                         messages.REFERRAL_SUCCESS_NOTIFICATION.format(reward_amount=reward)
                     )
                 except Exception as e:
-                    logger.error(f"Could not notify referrer {referrer_id}: {e}")
+                    logger.error(f"Could not notify referrer {referrer.chat_id}: {e}")
     else:
+        # این یک کاربر قدیمی است که بازگشته
         user.updated_at = datetime.utcnow()
         await user.save()
         logger.info(f"[start_cmd] Returning user updated: chat_id={chat_id}")
-        welcome_message = messages.START_RETURN_USER
-        await bot.send_message(chat_id, welcome_message, reply_markup=create_main_keyboard())
+        await bot.send_message(chat_id, messages.START_RETURN_USER, reply_markup=create_main_keyboard())
 
 
 @bot.message_handler(commands=["cancel"])
