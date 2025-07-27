@@ -142,9 +142,18 @@ async def start_cmd(message: Message):
                 await referrer.save()
                 logger.info(f"[start_cmd] Gave {reward} credits to referrer: chat_id={referrer.chat_id}")
                 try:
+                    # اطلاعات کاربر جدید را از آبجکت message استخراج می‌کنیم
+                    new_user_username = message.from_user.username if message.from_user.username else "نام کاربری ندارد"
+                    new_user_id = message.from_user.id
+
+                    # پیام را با اطلاعات جدید فرمت کرده و ارسال می‌کنیم
                     await bot.send_message(
                         referrer.chat_id,
-                        messages.REFERRAL_SUCCESS_NOTIFICATION.format(reward_amount=reward)
+                        messages.REFERRAL_SUCCESS_NOTIFICATION.format(
+                            reward_amount=reward,
+                            new_user_username=new_user_username,
+                            new_user_id=new_user_id
+                        )
                     )
                 except Exception as e:
                     logger.error(f"Could not notify referrer {referrer.chat_id}: {e}")
